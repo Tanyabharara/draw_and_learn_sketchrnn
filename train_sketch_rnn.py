@@ -31,8 +31,8 @@ def load_dataset():
         print(f"Loaded filtered dataset with {len(categories)} categories")
     else:
         # Fallback to original dataset
-        with open('data/quickdraw_data.pkl', 'rb') as f:
-            data = pickle.load(f)
+    with open('data/quickdraw_data.pkl', 'rb') as f:
+        data = pickle.load(f)
         print(f"Loaded original dataset with {len(categories)} categories")
     
     print(f"Categories: {categories}")
