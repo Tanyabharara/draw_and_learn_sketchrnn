@@ -1,228 +1,142 @@
-# SketchRNN QuickDraw Drawing Recognition Model
+# SketchRNN Drawing Recognition Game
 
-A deep learning model that can recognize hand-drawn images using the QuickDraw dataset. This project implements a **SketchRNN-inspired architecture** optimized for sketch recognition to classify drawings into 10 categories.
+An AI-powered drawing recognition system using SketchRNN with 28 categories and 86.71% accuracy.
 
-## Project Overview
+## 🎯 Overview
 
-This project demonstrates how to:
-- Download and preprocess the QuickDraw dataset (10 categories)
-- Train a SketchRNN-inspired model on drawing recognition
-- Create an interactive drawing interface for real-time predictions and testing
-- Achieve high accuracy on sketch recognition using CNN-based architecture
+This project implements a deep learning model that can recognize hand-drawn sketches across 28 different categories. The system includes both a training pipeline and a web-based interactive drawing game.
 
-## Architecture Choice
+## 📊 Dataset
 
-This project uses a **SketchRNN-inspired CNN architecture** specifically designed for sketch recognition:
+- **28 Categories**: cat, dog, house, tree, car, bird, fish, flower, sun, moon, apple, banana, grapes, strawberry, pizza, hamburger, hot dog, ice cream, cake, airplane, train, bicycle, helicopter, elephant, giraffe, lion, tiger, bear
+- **1,000 drawings per category** (28,000 total)
+- **Source**: QuickDraw dataset from Google
+- **Image size**: 28x28 pixels (grayscale)
 
-- **Input**: 28×28 grayscale drawings (QuickDraw format)
-- **Architecture**: CNN with residual connections and global pooling
-- **Output**: 10-class classification with softmax probabilities
-- **Parameters**: ~500K trainable parameters (lightweight and efficient)
-- **Regularization**: Dropout and Batch Normalization
+## 🏗️ Architecture
 
-## Project Structure
+- **Model Type**: Convolutional Neural Network (CNN)
+- **Parameters**: 5.9 million
+- **Input**: 28x28x1 grayscale images
+- **Output**: 28-class classification (softmax)
+- **Accuracy**: 86.71% on test set
 
+### Model Structure
 ```
-quick_draw_new_model/
-├── requirements.txt              # Python dependencies
-├── download_dataset.py           # Script to download QuickDraw data (10 categories)
-├── sketch_rnn_model.py          # SketchRNN-inspired model architecture
-├── train_sketch_rnn.py          # Training script for SketchRNN
-├── sketch_rnn_interface.py      # Interactive drawing app with testing
-├── test_sketch_rnn.py           # Test suite for SketchRNN
-├── README.md                    # This file
-├── data/                        # Dataset directory (created automatically)
-│   ├── quickdraw_data.pkl       # Downloaded drawings
-│   └── categories.json          # Category names
-├── best_sketch_rnn_model.h5     # Best model weights (created after training)
-├── sketch_rnn_model.h5          # Final trained model
-└── sketch_rnn_training_history.png # Training plots
+Data Augmentation → 4 Conv Blocks → Global Pooling → Dense Layers → 28 Classes
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Install Dependencies
-
+### Prerequisites
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Download Dataset
-
+### Download Dataset
 ```bash
 python download_dataset.py
 ```
 
-This will download exactly 1000 drawings for each of the 10 categories:
-- Cat
-- Dog  
-- House
-- Tree
-- Car
-- Bird
-- Fish
-- Flower
-- Sun
-- Moon
-
-**Note**: The dataset is balanced with exactly 1000 drawings per category to prevent overfitting and ensure fair training.
-
-### 3. Train the SketchRNN Model
-
+### Train Model
 ```bash
-python train_sketch_rnn.py
+python train_smart_sketch_rnn.py
 ```
 
-The training script will:
-- Load and preprocess the QuickDraw dataset
-- Verify balanced dataset (1000 drawings per category)
-- Split data into training (80%) and validation (20%) sets
-- Train the SketchRNN model for 50 epochs with early stopping
-- Save the best model as `best_sketch_rnn_model.h5`
-- Generate training history plots
-
-### 4. Test with Interactive Drawing Interface
-
+### Start Web Game
 ```bash
-python sketch_rnn_interface.py
+python start_web_game.py
 ```
 
-This opens an enhanced GUI where you can:
-- **Draw images** using your mouse on a 300×300 canvas
-- **Get real-time predictions** from the trained SketchRNN model
-- **See confidence scores** and top 3 predictions
-- **Save drawings** as PNG files
-- **Test multiple drawings** without restarting
+Then open: http://localhost:5000
 
-## Technical Details
+## 🎮 Web Interface
 
-### Model Architecture
+The web game features:
+- **Interactive drawing canvas**
+- **Real-time AI predictions**
+- **Top 5 predictions with confidence scores**
+- **28 category challenges**
+- **Score tracking system**
 
-- **Base**: CNN with SketchRNN-inspired design
-- **Input**: 28×28 grayscale images (normalized to [0,1])
-- **Convolutional Layers**: 3 Conv2D layers (32, 64, 128 filters)
-- **Output**: 10-class classification with softmax probabilities
-- **Parameters**: ~500K trainable parameters
-- **Regularization**: Dropout (0.5, 0.3) and Batch Normalization
+## 📁 Project Structure
+
+```
+├── train_smart_sketch_rnn.py    # Main training script
+├── web_drawing_game.py          # Flask web server
+├── start_web_game.py            # Launcher script
+├── download_dataset.py          # Dataset downloader
+├── requirements.txt             # Dependencies
+├── best_smart_sketch_rnn_model.h5  # Trained model (68MB)
+├── data/
+│   ├── categories.json          # 28 categories list
+│   └── filtered_quickdraw_data.pkl  # Dataset (84MB)
+└── templates/
+    └── index.html               # Web interface
+```
+
+## 🎯 Performance
+
+### Per-Category Accuracy (Top Performers)
+- **apple**: 98.67%
+- **bicycle**: 98.00%
+- **ice cream**: 96.67%
+- **house**: 96.00%
+- **tree**: 95.33%
+
+### Overall Performance
+- **Test Accuracy**: 86.71%
+- **Model Size**: 68MB
+- **Inference Speed**: Real-time
+
+## 🔧 Technical Details
 
 ### Training Configuration
+- **Epochs**: 110 (with early stopping)
+- **Batch Size**: 64
+- **Learning Rate**: 0.0005 (with scheduling)
+- **Optimizer**: Adam
+- **Loss**: Sparse Categorical Crossentropy
 
-- **Framework**: TensorFlow/Keras
-- **Optimizer**: Adam with learning rate 0.001
-- **Loss Function**: Sparse Categorical Crossentropy
-- **Callbacks**: Early Stopping, Learning Rate Reduction, Model Checkpoint
-- **Batch Size**: 32
-- **Epochs**: 50 (with early stopping)
-- **Data Augmentation**: None (to preserve sketch characteristics)
+### Data Augmentation
+- Random rotation (±10%)
+- Random zoom (±10%)
+- Random translation (±10%)
 
-### Dataset Preprocessing
+## 🌟 Features
 
-- **Size**: 28×28 pixels (original QuickDraw format)
-- **Normalization**: Pixel values scaled to [0,1]
-- **Format**: Grayscale with white background, black drawings
-- **Split**: 80% training, 20% validation (stratified)
-- **Total**: 10,000 drawings (10 categories × 1000 each)
-- **Balance**: Exactly 1000 drawings per category to prevent overfitting
+- ✅ **28-category recognition**
+- ✅ **Web-based drawing interface**
+- ✅ **Real-time predictions**
+- ✅ **High accuracy (86.71%)**
+- ✅ **Professional UI/UX**
+- ✅ **Complete training pipeline**
 
-## Expected Performance
+## 📈 Usage Examples
 
-With the SketchRNN architecture on this balanced dataset, you can expect:
-- **Training Time**: 15-45 minutes (depending on hardware)
-- **Validation Accuracy**: 90-98% after training
-- **Overfitting**: Minimal due to balanced dataset and dropout
-- **Generalization**: Excellent performance on sketch recognition
+1. **Training**: Train on custom categories
+2. **Web Game**: Interactive drawing challenges
+3. **API**: Use model for predictions
+4. **Research**: Extend for new categories
 
-## Enhanced Drawing Interface Features
+## 🤝 Contributing
 
-The interactive drawing app provides:
-- **300×300 pixel canvas** for comfortable drawing
-- **Real-time prediction** with confidence scores
-- **Top 3 predictions** display for better understanding
-- **Color-coded results** (green: high confidence, red: low confidence)
-- **Save drawing functionality** for later use
-- **Model information panel** showing status and parameters
-- **Clear canvas** functionality for multiple drawings
-- **User-friendly interface** with clear instructions
+Feel free to contribute by:
+- Adding new categories
+- Improving model architecture
+- Enhancing web interface
+- Reporting issues
 
-## Troubleshooting
-
-### Common Issues
-
-1. **"Model not found" error**
-   - Ensure you've run `python train_sketch_rnn.py` first
-   - Check that `sketch_rnn_model.h5` exists in the project directory
-
-2. **CUDA/GPU issues**
-   - TensorFlow will automatically use available GPUs
-   - For CPU-only training, modify device selection in training script
-
-3. **Download failures**
-   - Check internet connection
-   - Verify QuickDraw dataset availability
-   - Try running `download_dataset.py` again
-
-4. **Poor prediction accuracy**
-   - Ensure training completed successfully
-   - Check training plots for overfitting
-   - Try drawing more clearly in the interface
-
-### Performance Tips
-
-- **GPU Training**: Use CUDA if available for faster training
-- **Data Quality**: Ensure clean dataset downloads
-- **Model Saving**: Best model is automatically saved during training
-- **Regularization**: Dropout helps prevent overfitting
-
-## Testing and Validation
-
-### Run Tests
-
-```bash
-python test_sketch_rnn.py
-```
-
-This will verify:
-- Model architecture functionality
-- Input/output handling
-- Categories loading
-- Dataset loading and balance verification
-- Model save/load operations
-
-### Test Drawing Interface
-
-After training, you can:
-1. Draw various objects from the 10 categories
-2. Test prediction accuracy
-3. Save interesting drawings
-4. Compare model confidence across different drawing styles
-
-## Experimentation
-
-Feel free to experiment with:
-- **Different categories**: Modify the categories list in `download_dataset.py`
-- **Model architectures**: Adjust CNN layers and parameters
-- **Hyperparameters**: Modify learning rate, batch size, or epochs
-- **Data augmentation**: Add rotation, scaling, or noise for robustness
-
-## References
-
-- **QuickDraw Dataset**: [Google AI Blog](https://ai.googleblog.com/2017/08/launching-quick-draw.html)
-- **SketchRNN**: [A Neural Representation of Sketch Drawings](https://arxiv.org/abs/1704.03477)
-- **TensorFlow**: [Official Documentation](https://www.tensorflow.org/)
-
-## Contributing
-
-Contributions are welcome! Areas for improvement:
-- Additional model architectures
-- Data augmentation techniques
-- Better drawing interface
-- Model ensemble methods
-- Web-based deployment
-
-## License
+## 📄 License
 
 This project is open source and available under the MIT License.
 
+## 👨‍💻 Author
+
+**Tanya Bharara**
+- GitHub: [@Tanyabharara](https://github.com/Tanyabharara)
+- Project: SketchRNN Drawing Recognition Game
+
 ---
 
-**Happy Drawing and Testing with SketchRNN!**
+**Ready to draw? Start the web game and challenge the AI!** 🎨✨
