@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF.js Model Test</title>
+    <!-- Load TensorFlow.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #status { margin-bottom: 10px; font-weight: bold; }
+        #predictions { margin-top: 10px; white-space: pre-wrap; }
+        canvas { border: 1px solid black; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>TensorFlow.js Model Isolation Test</h1>
+    <div id="status">Status: Idle</div>
+    <button id="loadAndPredictButton">Load Model & Predict with Dummy Data</button>
+    <button id="loadAndPredictCanvasButton">Load Model & Predict from Canvas</button>
+    <hr>
+    <h2>Draw Here (224x224 recommended for direct test)</h2>
+    <canvas id="testCanvas" width="224" height="224"></canvas>
+    <button id="clearCanvasButton">Clear Canvas</button>
+    <div id="predictions">Predictions will appear here.</div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const predictionsDiv = document.getElementById('predictions');
+        const loadAndPredictButton = document.getElementById('loadAndPredictButton');
+        const loadAndPredictCanvasButton = document.getElementById('loadAndPredictCanvasButton');
+        const testCanvas = document.getElementById('testCanvas');
+        const clearCanvasButton = document.getElementById('clearCanvasButton');
+        const ctx = testCanvas.getContext('2d');
+
+        let model = null;
+        // Corrected path to point to the model inside 'models'
+        const modelUrl = '/models/model.json';
+        // Path to class labels, assuming it's in the same directory as model.json
+        const classLabelsUrl = '/models/class_labels.json';
+
+
+        // --- Canvas Drawing Logic ---
+        let isDrawing = false;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, testCanvas.width, testCanvas.height);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 8; // Adjust for visibility
+        ctx.lineCap = 'round';
+
+        function getMousePos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        testCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(testCanvas, e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        });
+        testCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(testCanvas, e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        });
+        testCanvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        testCanvas.addEventListener('mouseout', () => {
+            isDrawing = false;
+        });
+        clearCanvasButton.addEventListener('click', () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, testCanvas.width, testCanvas.height);
+            predictionsDiv.textContent = 'Predictions will appear here.';
+        });
+        // --- End Canvas Drawing Logic ---
+
+
+        async function loadMyModel() {
+            if (model) {
+                statusDiv.textContent = 'Status: Model already loaded.';
+                return model;
+            }
+            statusDiv.textContent = 'Status: Loading model...';
+            try {
+                const loadedModel = await tf.loadGraphModel(modelUrl);
+                statusDiv.textContent = 'Status: Model loaded successfully!';
+                console.log('Model loaded:', loadedModel);
+                model = loadedModel;
+                return model;
+            } catch (error) {
+                statusDiv.textContent = `Status: Error loading model - ${error.message}`;
+                console.error('Error loading model:', error);
+                if (error.message.includes('404')) {
+                    statusDiv.textContent += `\nCheck if model files exist at ${modelUrl}`;
+                }
+                return null;
+            }
+        }
+
+        function preprocessDummyData() {
+            statusDiv.textContent = 'Status: Preprocessing dummy data...';
+            // Model expects [1, 3, 224, 224] (NCHW)
+            const batchSize = 1;
+            const channels = 3;
+            const height = 224;
+            const width = 224;
+            // Create a dummy tensor (e.g., all zeros or random values)
+            const dummyTensor = tf.randomNormal([batchSize, channels, height, width]);
+            statusDiv.textContent = 'Status: Dummy data preprocessed.';
+            return dummyTensor;
+        }
+
+        function preprocessCanvas(canvasElement) {
+            statusDiv.textContent = 'Status: Preprocessing canvas image...';
+            if (!canvasElement) {
+                console.error('Canvas element not provided for preprocessing.');
+                statusDiv.textContent = 'Status: Error - Canvas element not found.';
+                return null;
+            }
+            try {
+                const targetHeight = 224;
+                const targetWidth = 224;
+
+                const tensor = tf.tidy(() => {
+                    let imgTensor = tf.browser.fromPixels(canvasElement);
+                    imgTensor = tf.image.resizeBilinear(imgTensor, [targetHeight, targetWidth]);
+                    imgTensor = imgTensor.toFloat().div(tf.scalar(255));
+                    imgTensor = imgTensor.expandDims(0); // NHWC: [1, 224, 224, 3]
+                    // Transpose from NHWC to NCHW as model expects [1, 3, 224, 224]
+                    imgTensor = imgTensor.transpose([0, 3, 1, 2]);
+                    return imgTensor;
+                });
+                statusDiv.textContent = 'Status: Canvas image preprocessed.';
+                return tensor;
+            } catch (error) {
+                console.error('Error during image preprocessing:', error);
+                statusDiv.textContent = `Status: Error preprocessing canvas - ${error.message}`;
+                return null;
+            }
+        }
+
+
+        async function runPrediction(inputTensor) {
+            if (!model) {
+                statusDiv.textContent = 'Status: Model not loaded. Please load first.';
+                predictionsDiv.textContent = 'Model not loaded.';
+                return;
+            }
+            if (!inputTensor) {
+                statusDiv.textContent = 'Status: No input tensor for prediction.';
+                predictionsDiv.textContent = 'No input tensor.';
+                return;
+            }
+
+            statusDiv.textContent = 'Status: Running prediction...';
+            predictionsDiv.textContent = 'Processing...'; // Update DOM during processing
+
+            try {
+                const predictionsTensor = model.predict(inputTensor);
+                const probabilities = await predictionsTensor.data();
+
+                // Clean up tensors
+                if (Array.isArray(predictionsTensor)) {
+                    predictionsTensor.forEach(p => p.dispose());
+                } else {
+                    predictionsTensor.dispose();
+                }
+                inputTensor.dispose(); // Dispose the input tensor
+
+                statusDiv.textContent = 'Status: Prediction complete! Fetching class labels...';
+                
+                // Fetch class labels
+                let classLabels = [];
+                try {
+                    const response = await fetch(classLabelsUrl);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status} while fetching ${classLabelsUrl}`);
+                    }
+                    classLabels = await response.json();
+                    statusDiv.textContent = 'Status: Prediction complete! Class labels fetched.';
+                } catch (labelError) {
+                    console.error('Error fetching class labels:', labelError);
+                    statusDiv.textContent = `Status: Prediction complete! Error fetching class labels - ${labelError.message}`;
+                    // Display raw probabilities if labels fail to load
+                    predictionsDiv.textContent = `Raw Probabilities (first 10 of ${probabilities.length}):\n${Array.from(probabilities).slice(0, 10).join('\n')}\n(Could not load class labels from ${classLabelsUrl})`;
+                    return;
+                }
+
+                if (!Array.isArray(classLabels)) {
+                    console.error('Class labels is not an array:', classLabels);
+                    statusDiv.textContent = 'Status: Prediction complete! Invalid class labels format.';
+                    predictionsDiv.textContent = `Raw Probabilities (first 10 of ${probabilities.length}):\n${Array.from(probabilities).slice(0, 10).join('\n')}\n(Class labels file format is invalid)`;
+                    return;
+                }
+                
+                const formattedPredictions = Array.from(probabilities)
+                   .map((prob, i) => ({ className: classLabels[i] || `Class ${i}`, probability: prob }))
+                   .sort((a, b) => b.probability - a.probability)
+                   .slice(0, 5); // Get top 5 predictions
+                
+                // Display formatted predictions in the DOM
+                predictionsDiv.textContent = `Top 5 Predictions:\n${formattedPredictions.map(p => `${p.className}: ${(p.probability * 100).toFixed(2)}%`).join('\n')}`;
+                console.log('Formatted Predictions:', formattedPredictions);
+
+            } catch (error) {
+                statusDiv.textContent = `Status: Error during prediction - ${error.message}`;
+                predictionsDiv.textContent = `Error during prediction: ${error.message}`;
+                console.error('Error during prediction:', error);
+            }
+        }
+
+        loadAndPredictButton.addEventListener('click', async () => {
+            predictionsDiv.textContent = 'Predictions will appear here.';
+            const currentModel = await loadMyModel();
+            if (currentModel) {
+                const dummyTensor = preprocessDummyData();
+                await runPrediction(dummyTensor);
+            }
+        });
+
+        loadAndPredictCanvasButton.addEventListener('click', async () => {
+            predictionsDiv.textContent = 'Predictions will appear here.';
+            const currentModel = await loadMyModel();
+            if (currentModel) {
+                const canvasTensor = preprocessCanvas(testCanvas);
+                await runPrediction(canvasTensor);
+            }
+        });
+
+    </script>
+</body>
+</html>
