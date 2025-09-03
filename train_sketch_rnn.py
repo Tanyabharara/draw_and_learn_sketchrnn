@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Smart SketchRNN Training Script
-Trains a SketchRNN model on 28 drawing categories
+Enhanced SketchRNN Training Script for 51 Categories
+Trains a SketchRNN model on 51 drawing categories with 8,000 drawings each
 """
 
 import numpy as np
@@ -17,22 +17,22 @@ from tensorflow.keras import layers, callbacks
 import tensorflow as tf
 
 def load_dataset():
-    """Load the complete dataset"""
-    print("Loading dataset...")
+    """Load the complete dataset for 51 categories"""
+    print("Loading enhanced dataset for 51 categories...")
     
     # Load categories
-    with open('data/categories.json', 'r') as f:
+    with open('data/categories_51.json', 'r') as f:
         categories = json.load(f)
     
-    # Try to load the filtered dataset first
-    if os.path.exists('data/filtered_quickdraw_data.pkl'):
-        with open('data/filtered_quickdraw_data.pkl', 'rb') as f:
+    # Try to load the enhanced dataset first
+    if os.path.exists('data/enhanced_quickdraw_data.pkl'):
+        with open('data/enhanced_quickdraw_data.pkl', 'rb') as f:
             data = pickle.load(f)
-        print(f"Loaded filtered dataset with {len(categories)} categories")
+        print(f"Loaded enhanced dataset with {len(categories)} categories")
     else:
         # Fallback to original dataset
-    with open('data/quickdraw_data.pkl', 'rb') as f:
-        data = pickle.load(f)
+        with open('data/quickdraw_data.pkl', 'rb') as f:
+            data = pickle.load(f)
         print(f"Loaded original dataset with {len(categories)} categories")
     
     print(f"Categories: {categories}")
@@ -40,8 +40,8 @@ def load_dataset():
     return categories, data
 
 def prepare_training_data(categories, data):
-    """Prepare data for training all 28 categories"""
-    print("\nPreparing training data for all 28 categories...")
+    """Prepare data for training all 51 categories with 8,000 drawings each"""
+    print("\nPreparing training data for all 51 categories...")
     
     print(f"Total categories to train: {len(categories)}")
     
@@ -52,6 +52,12 @@ def prepare_training_data(categories, data):
     for i, category in enumerate(categories):
         if category in data:
             category_data = data[category]
+            # Ensure we have up to 8,000 drawings per category
+            if len(category_data) > 8000:
+                category_data = category_data[:8000]
+            elif len(category_data) < 8000:
+                print(f"Warning: {category} only has {len(category_data)} drawings (target: 8,000)")
+            
             X_all.extend(category_data)
             y_all.extend([i] * len(category_data))
             print(f"  {category}: {len(category_data)} drawings")
@@ -68,70 +74,79 @@ def prepare_training_data(categories, data):
     
     return X_all, y_all, categories
 
-def create_sketch_rnn_model(num_classes=28):
-    """Create a SketchRNN model for 28 categories"""
-    print(f"\nCreating SketchRNN model for {num_classes} total classes...")
+def create_enhanced_sketch_rnn_model(num_classes=51):
+    """Create an enhanced SketchRNN model for 51 categories"""
+    print(f"\nCreating enhanced SketchRNN model for {num_classes} total classes...")
     
-    # Enhanced model with better architecture for higher accuracy
+    # Enhanced model with better architecture for 51 categories and larger dataset
     model = keras.Sequential([
-        # Data augmentation layers
-        layers.RandomRotation(0.1),
-        layers.RandomZoom(0.1),
-        layers.RandomTranslation(0.1, 0.1),
+        # Enhanced data augmentation layers
+        layers.RandomRotation(0.15),
+        layers.RandomZoom(0.15),
+        layers.RandomTranslation(0.15, 0.15),
+        layers.RandomBrightness(0.2),
         
         # First Conv block - 28x28 -> 14x14
-        layers.Conv2D(64, (3, 3), activation='relu', input_shape=(28, 28, 1), padding='same'),
+        layers.Conv2D(128, (3, 3), activation='relu', input_shape=(28, 28, 1), padding='same'),
         layers.BatchNormalization(),
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
         
         # Second Conv block - 14x14 -> 7x7
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
         
         # Third Conv block - 7x7 -> 4x4
-        layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
-        layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
         
         # Fourth Conv block for better feature extraction
-        layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(1024, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
-        layers.Conv2D(512, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(1024, (3, 3), activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
         
-        # Global average pooling
+        # Fifth Conv block for enhanced feature learning
+        layers.Conv2D(1024, (3, 3), activation='relu', padding='same'),
+        layers.BatchNormalization(),
+        layers.Conv2D(1024, (3, 3), activation='relu', padding='same'),
+        layers.BatchNormalization(),
         layers.GlobalAveragePooling2D(),
+        layers.Dropout(0.4),
         
-        # Enhanced dense layers
+        # Enhanced dense layers for 51 categories
+        layers.Dense(2048, activation='relu'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.6),
         layers.Dense(1024, activation='relu'),
         layers.BatchNormalization(),
-        layers.Dropout(0.5),
+        layers.Dropout(0.6),
         layers.Dense(512, activation='relu'),
         layers.BatchNormalization(),
         layers.Dropout(0.5),
         layers.Dense(256, activation='relu'),
         layers.BatchNormalization(),
-        layers.Dropout(0.3),
+        layers.Dropout(0.4),
         
-        # Output layer for all 28 categories
+        # Output layer for all 51 categories
         layers.Dense(num_classes, activation='softmax')
     ])
     
-    # Compile model
+    # Compile model with adjusted learning rate for larger dataset
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+        optimizer=keras.optimizers.Adam(learning_rate=0.0003),
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -140,59 +155,67 @@ def create_sketch_rnn_model(num_classes=28):
     sample_input = np.random.random((1, 28, 28, 1))
     model.build(sample_input.shape)
     
-    print(f"Model created with {model.count_params():,} parameters")
+    print(f"Enhanced model created with {model.count_params():,} parameters")
     return model
 
-def train_model(model, X_train, y_train, X_val, y_val, all_categories):
-    """Train the model on all categories"""
-    print(f"\nStarting training on {len(all_categories)} categories...")
+def train_enhanced_model(model, X_train, y_train, X_val, y_val, all_categories):
+    """Train the enhanced model on all 51 categories"""
+    print(f"\nStarting enhanced training on {len(all_categories)} categories...")
     
-    # Enhanced callbacks for better accuracy
+    # Enhanced callbacks for better accuracy with larger dataset
     callbacks_list = [
         callbacks.EarlyStopping(
             monitor='val_accuracy',
-            patience=25,
+            patience=35,
             restore_best_weights=True,
             verbose=1,
             min_delta=0.001
         ),
         callbacks.ReduceLROnPlateau(
             monitor='val_loss',
-            factor=0.3,
-            patience=12,
+            factor=0.2,
+            patience=20,
             min_lr=1e-8,
             verbose=1
         ),
         callbacks.ModelCheckpoint(
-            'best_sketch_rnn_model.h5',
+            'best_enhanced_sketch_rnn_model.h5',
             monitor='val_accuracy',
             save_best_only=True,
             verbose=1
         ),
-        # Add learning rate scheduling for better convergence
+        # Enhanced learning rate scheduling for larger dataset
         callbacks.LearningRateScheduler(
-            lambda epoch: 0.0005 * (0.9 ** (epoch // 20))
+            lambda epoch: 0.0003 * (0.85 ** (epoch // 25))
+        ),
+        # Add TensorBoard logging
+        callbacks.TensorBoard(
+            log_dir='logs/enhanced_train',
+            histogram_freq=1,
+            write_graph=True,
+            write_images=True
         )
     ]
     
-    # Training with more epochs and better batch size
+    # Training with more epochs and adjusted batch size for larger dataset
     history = model.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        epochs=110,
-        batch_size=64,
+        epochs=150,
+        batch_size=128,
         callbacks=callbacks_list,
-        verbose=1
+        verbose=1,
+        shuffle=True
     )
     
     return history
 
-def evaluate_model(model, X_test, y_test, all_categories):
-    """Evaluate the model on test data"""
-    print(f"\nEvaluating model on {len(all_categories)} categories...")
+def evaluate_enhanced_model(model, X_test, y_test, all_categories):
+    """Evaluate the enhanced model on test data"""
+    print(f"\nEvaluating enhanced model on {len(all_categories)} categories...")
     
     # Predictions
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test, batch_size=128)
     y_pred_classes = np.argmax(y_pred, axis=1)
     
     # Get unique classes from test data
@@ -211,28 +234,28 @@ def evaluate_model(model, X_test, y_test, all_categories):
     
     # Confusion matrix
     cm = confusion_matrix(y_test, y_pred_classes, labels=unique_classes)
-    plt.figure(figsize=(15, 12))
+    plt.figure(figsize=(20, 16))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=actual_categories, yticklabels=actual_categories)
-    plt.title('Confusion Matrix - All 28 Categories')
+    plt.title('Enhanced Model Confusion Matrix - All 51 Categories')
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.xticks(rotation=45)
     plt.yticks(rotation=0)
     plt.tight_layout()
-    plt.savefig('sketch_rnn_confusion_matrix.png', dpi=300, bbox_inches='tight')
+    plt.savefig('enhanced_sketch_rnn_confusion_matrix.png', dpi=300, bbox_inches='tight')
     plt.show()
     
     return accuracy, y_pred_classes
 
-def plot_training_history(history):
-    """Plot training history"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+def plot_enhanced_training_history(history):
+    """Plot enhanced training history"""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 6))
     
     # Accuracy
     ax1.plot(history.history['accuracy'], label='Training Accuracy')
     ax1.plot(history.history['val_accuracy'], label='Validation Accuracy')
-    ax1.set_title('Model Accuracy')
+    ax1.set_title('Enhanced Model Accuracy')
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Accuracy')
     ax1.legend()
@@ -241,56 +264,56 @@ def plot_training_history(history):
     # Loss
     ax2.plot(history.history['loss'], label='Training Loss')
     ax2.plot(history.history['val_loss'], label='Validation Loss')
-    ax2.set_title('Model Loss')
+    ax2.set_title('Enhanced Model Loss')
     ax2.set_xlabel('Epoch')
     ax2.set_ylabel('Loss')
     ax2.legend()
     ax2.grid(True)
     
     plt.tight_layout()
-    plt.savefig('sketch_rnn_training_history.png', dpi=300, bbox_inches='tight')
+    plt.savefig('enhanced_sketch_rnn_training_history.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 def main():
-    """Main training function"""
-    print("Smart SketchRNN Training - All 28 Categories")
-    print("=" * 60)
+    """Main enhanced training function"""
+    print("Enhanced SketchRNN Training - All 51 Categories")
+    print("=" * 70)
     
     # Load dataset
     categories, data = load_dataset()
     
-    # Prepare training data for all 28 categories
+    # Prepare training data for all 51 categories
     X_all, y_all, all_categories = prepare_training_data(categories, data)
     
-    # Split data
+    # Split data with adjusted ratios for larger dataset
     X_train, X_temp, y_train, y_temp = train_test_split(
-        X_all, y_all, test_size=0.3, random_state=42, stratify=y_all
+        X_all, y_all, test_size=0.25, random_state=42, stratify=y_all
     )
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
+        X_temp, y_temp, test_size=0.4, random_state=42, stratify=y_temp
     )
     
-    print(f"\nData split:")
-    print(f"  Training: {X_train.shape[0]} samples")
-    print(f"  Validation: {X_val.shape[0]} samples")
-    print(f"  Testing: {X_test.shape[0]} samples")
+    print(f"\nEnhanced data split:")
+    print(f"  Training: {X_train.shape[0]:,} samples")
+    print(f"  Validation: {X_val.shape[0]:,} samples")
+    print(f"  Testing: {X_test.shape[0]:,} samples")
     
-    # Create and train model for all 28 categories
-    model = create_sketch_rnn_model(num_classes=28)
+    # Create and train enhanced model for all 51 categories
+    model = create_enhanced_sketch_rnn_model(num_classes=51)
     
-    # Train model
-    history = train_model(model, X_train, y_train, X_val, y_val, all_categories)
+    # Train enhanced model
+    history = train_enhanced_model(model, X_train, y_train, X_val, y_val, all_categories)
     
-    # Evaluate model
-    accuracy, predictions = evaluate_model(model, X_test, y_test, all_categories)
+    # Evaluate enhanced model
+    accuracy, predictions = evaluate_enhanced_model(model, X_test, y_test, all_categories)
     
-    # Plot training history
-    plot_training_history(history)
+    # Plot enhanced training history
+    plot_enhanced_training_history(history)
     
-    print(f"\nTraining complete!")
+    print(f"\nEnhanced training complete!")
     print(f"All categories trained: {all_categories}")
     print(f"Final test accuracy: {accuracy*100:.2f}%")
-    print(f"Best model saved as: best_sketch_rnn_model.h5")
+    print(f"Enhanced model saved as: best_enhanced_sketch_rnn_model.h5")
 
 if __name__ == "__main__":
     main()
